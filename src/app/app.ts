@@ -18,6 +18,13 @@ import uploadRoutes from "@modules/upload/upload.routes";
 const app: Application = express();
 
 // ==========================================
+// 🚨 CRITICAL FIX FOR RENDER DEPLOYMENT 🚨
+// ==========================================
+// This tells Express to trust the "X-Forwarded-For" header from Render's Load Balancer.
+// Without this, rate-limiting breaks and the app crashes.
+app.set('trust proxy', 1);
+
+// ==========================================
 // 1. Global Basics (Must be first)
 // ==========================================
 app.use(express.json());  // Parse JSON bodies
