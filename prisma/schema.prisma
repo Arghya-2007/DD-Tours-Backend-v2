@@ -1,0 +1,146 @@
+// 1. Setup
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ==========================================
+// 2. USER MODEL
+// ==========================================
+model User {
+  // Your requirements
+  userId       String    @id @default(uuid()) // Random Alphanumeric
+  userName     String
+  userEmail    String    @unique
+  password     String // Hashed
+  phoneNumber  String // String is better for phone numbers (preserves +91)
+  aadharNumber String? // Optional? (Not everyone might have it ready at signup)
+  dob          DateTime?
+
+  // System fields
+  role      Role     @default(USER) // USER or ADMIN
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  bookings Booking[]
+  reviews  Review[]
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+// ==========================================
+// 3. TOURS MODEL
+// ==========================================
+model Tour {
+  // Your requirements
+  tourId          String @id @default(uuid())
+  tourTitle       String
+  slug            String @unique // For SEO URLs: "darjeeling-trip"
+  tourDuration    String // e.g., "5 Days / 4 Nights"
+  tourDescription String @db.Text // Allows long text
+  tourPrice       Float
+
+  // Date Logic
+  expectedMonth   String? // e.g., "October" (Used if isFixedDate = false)
+  isFixedDate     Boolean   @default(false)
+  fixedDate       DateTime?
+  bookingDeadline DateTime?
+
+  // Arrays (Postgres supports this natively)
+  coveredPlaces String[]
+  includedItems String[] // e.g., ["Breakfast", "Hotel", "Bus"]
+  images        String[] // URLs from Cloudinary
+
+  // Status & Seats
+  tourStatus     TourStatus @default(UPCOMING)
+  maxSeats       Int
+  availableSeats Int // ⚠️ Logic: Decrease this when a booking is confirmed!
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  bookings Booking[]
+}
+
+enum TourStatus {
+  UPCOMING
+  ONGOING
+  COMPLETED
+}
+
+// ==========================================
+// 4. BOOKING MODEL
+// ==========================================
+model Booking {
+  bookingId String @id @default(uuid())
+
+  // Relations (Required Tour & User Data)
+  user   User   @relation(fields: [userId], references: [userId])
+  userId String
+  tour   Tour   @relation(fields: [tourId], references: [tourId])
+  tourId String
+
+  // Booking Info
+  totalGuests Int
+  totalPrice  Float
+  bookingDate DateTime @default(now()) // The "createdAt"
+
+  // ⭐️ New Field: Store details of all passengers (Name, Age, Gender)
+  guestDetails Json?
+
+  // Statuses
+  bookingStatus BookingStatus @default(PENDING)
+
+  // Payment Info
+  paymentMethod PaymentMethod? // ONLINE or OFFLINE
+  paymentStatus PaymentStatus  @default(PENDING)
+  paymentTime   DateTime?
+  paymentId     String? // From Razorpay
+  transactionId String? // Bank Transaction ID
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  FAILED
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  UPI
+  NET_BANKING
+  OFFLINE
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+model Review {
+  reviewId String @id @default(uuid())
+  userId   String
+
+  tourName   String // 📸 Snapshot: We store the name (e.g., "Grand Swiss Trip")
+  reviewText String
+  rating     Int
+  photoUrl   String? // Optional: Users can upload a photo of their trip
+  createdAt  DateTime @default(now())
+
+  // Relation: Link to User (so we show their name/avatar)
+  user User @relation(fields: [userId], references: [userId])
+
+  // ⚠️ NO Relation to Tour (Because Tour will be deleted)
+}

@@ -1,0 +1,1 @@
+export { default as tourRoutes } from "./api/tours.routes";
