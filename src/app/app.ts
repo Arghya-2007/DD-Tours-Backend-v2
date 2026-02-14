@@ -33,18 +33,22 @@ app.use(helmet());        // Security headers
 
 // CORS: Allow Frontend to talk to Backend
 // In production, replace '*' with your actual frontend URL
-app.use(cors({
-    origin: [
-        'http://localhost:5173',           // 👈 Your Local Frontend (Vite)
-        'http://localhost:5174',           // 👈 Your Local Frontend (Vite)
-        'http://localhost:5175',           // 👈 Your Local Frontend (Vite)
-        'https://dd-admin-v2.onrender.com', // (Future) Your deployed Admin Panel
-        'https://ddtours.in'               // (Future) Your main website
-    ],
-    credentials: true, // 👈 CRITICAL: Allows cookies (Refresh Token) to be sent
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-}));
+// 👇 FIND THIS BLOCK IN YOUR app.ts
+const allowedOrigins = [
+    'https://dd-tours-backend-v2.onrender.com',
+    'https://dd-admin-v2.onrender.com',
+    'http://localhost:5173', // 👈 ADD THIS LINE!
+    'http://localhost:5174'
+];
+
+app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin && !allowedOrigins.includes(origin)) {
+        // This is the code sending your error!
+        return res.status(403).json({ message: "CORS/CSRF Policy Violation" });
+    }
+    next();
+});
 
 
 // ==========================================
