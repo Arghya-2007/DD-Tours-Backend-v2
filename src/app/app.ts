@@ -1,14 +1,15 @@
 import express, { Application, Request, Response } from 'express';
-import cors from 'cors';
+import cors from 'cors'; // ✅ We will actually use this now
 import helmet from 'helmet';
 import cookieParser from "cookie-parser";
 
 // Middleware Imports
-import { apiLimiter, checkOrigin } from '@common/middleware/security.middleware';
+import { apiLimiter } from '@common/middleware/security.middleware';
+// ⚠️ Note: I removed 'checkOrigin' from imports because standard cors() handles this better.
 
 // Route Imports
-import { authRoutes } from "../modules/auth"; // Check if this is named or default export!
-import { tourRoutes } from "../modules/tours"; // Check if this is named or default export!
+import { authRoutes } from "../modules/auth";
+import { tourRoutes } from "../modules/tours";
 import bookingRoutes from "@modules/bookings/api/booking.routes";
 import paymentRoutes from "@modules/payments/payment.routes";
 import reviewRoutes from "@modules/reviews/review.routes";
@@ -18,60 +19,68 @@ import uploadRoutes from "@modules/upload/upload.routes";
 const app: Application = express();
 
 // ==========================================
-// 🚨 CRITICAL FIX FOR RENDER DEPLOYMENT 🚨
+// 🚨 CRITICAL FIX 1: Trust Render's Proxy
 // ==========================================
-// This tells Express to trust the "X-Forwarded-For" header from Render's Load Balancer.
-// Without this, rate-limiting breaks and the app crashes.
 app.set('trust proxy', 1);
 
 // ==========================================
-// 1. Global Basics (Must be first)
+// 🚨 CRITICAL FIX 2: Correct CORS Configuration
 // ==========================================
-app.use(express.json());  // Parse JSON bodies
-app.use(cookieParser());  // Parse cookies
-app.use(helmet());        // Security headers
-
-// CORS: Allow Frontend to talk to Backend
-// In production, replace '*' with your actual frontend URL
-// 👇 FIND THIS BLOCK IN YOUR app.ts
 const allowedOrigins = [
     'https://dd-tours-backend-v2.onrender.com',
     'https://dd-admin-v2.onrender.com',
-    'http://localhost:5173', // 👈 ADD THIS LINE!
+    'http://localhost:5173',
     'http://localhost:5174'
 ];
 
-app.use((req, res, next) => {
-    const origin = req.headers.origin;
-    if (origin && !allowedOrigins.includes(origin)) {
-        // This is the code sending your error!
-        return res.status(403).json({ message: "CORS/CSRF Policy Violation" });
-    }
-    next();
-});
+const corsOptions = {
+    origin: (origin: any, callback: any) => {
+        // Allow requests with no origin (like Postman, Mobile Apps, or curl)
+        if (!origin) return callback(null, true);
+
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true); // Allowed
+        } else {
+            callback(new Error('Not allowed by CORS')); // Blocked
+        }
+    },
+    credentials: true, // 👈 KEY: Allows cookies (Refresh Token)
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+};
+
+// 1. Apply CORS immediately
+app.use(cors(corsOptions));
+
+// 2. Handle Preflight Requests Explicitly
+app.options('*', cors(corsOptions));
 
 
 // ==========================================
-// 2. Health Check (CRITICAL: Place BEFORE strict security)
+// 3. Global Basics
 // ==========================================
-// Render hits this to know if the app is alive.
-// It must NOT be blocked by rate limiters or origin checks.
+app.use(express.json({ limit: '10kb' })); // Added limit for safety
+app.use(cookieParser());
+app.use(helmet());
+
+// ==========================================
+// 4. Health Check
+// ==========================================
 app.get('/', (_req: Request, res: Response) => {
     res.status(200).json({
         message: 'DD Tours & Travels V2 API is running! 🚀',
-        env: process.env.NODE_ENV, // Helpful for debugging
+        env: process.env.NODE_ENV,
         timestamp: new Date().toISOString()
     });
 });
 
 // ==========================================
-// 3. Strict Security (Apply only to API routes)
+// 5. Rate Limiting (Apply only to API routes)
 // ==========================================
-app.use('/api', apiLimiter); // Only limit API calls, not health checks
-app.use('/api', checkOrigin); // Only check origin for API calls
+app.use('/api', apiLimiter);
 
 // ==========================================
-// 4. Register Routes
+// 6. Register Routes
 // ==========================================
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/tours", tourRoutes);
