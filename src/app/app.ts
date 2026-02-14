@@ -34,9 +34,18 @@ app.use(helmet());        // Security headers
 // CORS: Allow Frontend to talk to Backend
 // In production, replace '*' with your actual frontend URL
 app.use(cors({
-    origin: process.env.FRONTEND_URL || '*', // Allow all or specific frontend
-    credentials: true, // Allow cookies
+    origin: [
+        'http://localhost:5173',           // 👈 Your Local Frontend (Vite)
+        'http://localhost:5174',           // 👈 Your Local Frontend (Vite)
+        'http://localhost:5175',           // 👈 Your Local Frontend (Vite)
+        'https://dd-admin-v2.onrender.com', // (Future) Your deployed Admin Panel
+        'https://ddtours.in'               // (Future) Your main website
+    ],
+    credentials: true, // 👈 CRITICAL: Allows cookies (Refresh Token) to be sent
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
+
 
 // ==========================================
 // 2. Health Check (CRITICAL: Place BEFORE strict security)
