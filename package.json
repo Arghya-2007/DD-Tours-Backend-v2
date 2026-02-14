@@ -14,6 +14,7 @@
   "author": "DD Tours & Travels",
   "license": "ISC",
   "devDependencies": {
+    "@prisma/adapter-neon": "^7.4.0",
     "@prisma/client": "^7.4.0",
     "@types/bcrypt": "^6.0.0",
     "@types/bcryptjs": "^2.4.6",
@@ -27,6 +28,7 @@
     "@types/node": "^20.11.19",
     "@types/nodemailer": "^7.0.9",
     "@types/pg": "^8.16.0",
+    "@types/ws": "^8.18.1",
     "nodemon": "^3.0.3",
     "prisma": "^7.4.0",
     "ts-node": "^10.9.2",
@@ -35,6 +37,7 @@
     "typescript": "^5.3.3"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.0.2",
     "@prisma/adapter-pg": "^7.4.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
@@ -52,6 +55,7 @@
     "nodemailer": "^8.0.1",
     "pg": "^8.18.0",
     "razorpay": "^2.9.6",
+    "ws": "^8.19.0",
     "zod": "^3.25.76"
   },
   "prisma": {
