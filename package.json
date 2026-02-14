@@ -5,7 +5,7 @@
   "main": "dist/app/server.js",
   "scripts": {
     "dev": "nodemon src/app/server.ts",
-    "postinstall": "prisma generate",
+    "postinstall": "npx prisma generate",
     "build": "tsc && tsc-alias",
     "start": "node dist/app/server.js",
     "lint": "eslint src/**/*.ts",
@@ -16,7 +16,6 @@
   "license": "ISC",
   "devDependencies": {
     "@prisma/adapter-neon": "^7.4.0",
-    "@prisma/client": "^7.4.0",
     "@types/bcrypt": "^6.0.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/cookie-parser": "^1.4.10",
@@ -31,7 +30,6 @@
     "@types/pg": "^8.16.0",
     "@types/ws": "^8.18.1",
     "nodemon": "^3.0.3",
-    "prisma": "^7.4.0",
     "ts-node": "^10.9.2",
     "tsc-alias": "^1.8.16",
     "tsconfig-paths": "^4.2.0",
@@ -40,6 +38,8 @@
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",
     "@prisma/adapter-pg": "^7.4.0",
+    "@prisma/client": "^7.4.0",
+    "prisma": "^7.4.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
     "bullmq": "^5.69.1",
