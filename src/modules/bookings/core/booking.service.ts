@@ -106,3 +106,13 @@ export const getAllBookings = async (userId: string, role: string) => {
         }
     });
 };
+
+// ... inside your booking.service.ts
+
+export const updateBookingStatusInDB = async (bookingId: string, status: string) => {
+    // Assuming you use Prisma
+    return prisma.booking.update({
+        where: {bookingId},
+        data: {bookingStatus: status as any} // Cast if using strict Enums
+    });
+};

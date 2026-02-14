@@ -1,6 +1,6 @@
 import { Router } from "express";
-import {createBooking, getBookings} from "./booking.controller";
-import { authenticate } from "@common/middleware/auth.middleware";
+import {createBooking, getBookings, updateBookingStatus} from "./booking.controller";
+import {authenticate, requireAdmin} from "@common/middleware/auth.middleware";
 import { validateRequest } from "@common/middleware/validateRequest";
 import { createBookingSchema } from "./../core/booking.validation";
 
@@ -15,5 +15,6 @@ router.post(
 );
 
 router.get("/", authenticate, getBookings);
+router.patch('/:bookingId', authenticate, requireAdmin, updateBookingStatus);
 
 export default router;

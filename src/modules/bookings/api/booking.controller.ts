@@ -37,3 +37,24 @@ export const getBookings = async (req: AuthRequest, res: Response) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
+export const updateBookingStatus = async (req: AuthRequest, res: Response) => {
+    try {
+        const { bookingId } = req.params;
+        const { bookingStatus } = req.body; // e.g., "CONFIRMED", "CANCELLED"
+
+        if (!bookingId) throw new Error("Booking ID is required");
+        if (!bookingStatus) throw new Error("New status is required");
+
+        // call service (we'll check this next)
+        const result = await bookingService.updateBookingStatusInDB(bookingId, bookingStatus);
+
+        res.status(200).json({
+            success: true,
+            message: `Booking status updated to ${bookingStatus}`,
+            data: result
+        });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
