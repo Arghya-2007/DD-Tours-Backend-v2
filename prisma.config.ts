@@ -1,8 +1,10 @@
-// This file is used by the Prisma CLI (migrations, generate)
+import { config } from 'dotenv'; // 1. Import dotenv
+
+config(); // 2. Load the .env file immediately
+
 export default {
     datasource: {
-        // We prefer DIRECT_URL for migrations (Port 5432)
-        // If not found, fall back to DATABASE_URL
+        // Now process.env will actually have values!
         url: process.env.DIRECT_URL || process.env.DATABASE_URL,
     },
 };
