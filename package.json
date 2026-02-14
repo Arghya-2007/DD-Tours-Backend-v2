@@ -5,7 +5,8 @@
   "main": "dist/app/server.js",
   "scripts": {
     "dev": "nodemon src/app/server.ts",
-    "build": "npx prisma generate && tsc && tsc-alias",
+    "postinstall": "prisma generate",
+    "build": "tsc && tsc-alias",
     "start": "node dist/app/server.js",
     "lint": "eslint src/**/*.ts",
     "format": "prettier --write \"src/**/*.ts\""
