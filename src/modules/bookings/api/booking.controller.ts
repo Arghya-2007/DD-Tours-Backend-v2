@@ -58,3 +58,42 @@ export const updateBookingStatus = async (req: AuthRequest, res: Response) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
+// 1. 👇 Update Payment Status (Only for Pending -> Completed)
+export const updatePaymentStatus = async (req: AuthRequest, res: Response) => {
+    try {
+        const { bookingId } = req.params;
+        const { paymentStatus } = req.body; // Expect "COMPLETED"
+
+        if (!bookingId) throw new Error("Booking ID is required");
+
+        // Update in DB (Make sure to export this function in Service!)
+        const result = await bookingService.updatePaymentStatusInDB(bookingId, paymentStatus);
+
+        res.status(200).json({
+            success: true,
+            message: "Payment status updated successfully",
+            data: result
+        });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// 2. 👇 Delete Booking (Hard Delete)
+export const deleteBooking = async (req: AuthRequest, res: Response) => {
+    try {
+        const { bookingId } = req.params;
+        if (!bookingId) throw new Error("Booking ID is required");
+
+        await bookingService.deleteBookingFromDB(bookingId);
+
+        res.status(200).json({
+            success: true,
+            message: "Booking deleted successfully",
+            data: null
+        });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};

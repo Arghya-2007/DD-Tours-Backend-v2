@@ -1,5 +1,11 @@
 import { Router } from "express";
-import {createBooking, getBookings, updateBookingStatus} from "./booking.controller";
+import {
+    createBooking,
+    deleteBooking,
+    getBookings,
+    updateBookingStatus,
+    updatePaymentStatus
+} from "./booking.controller";
 import {authenticate, requireAdmin} from "@common/middleware/auth.middleware";
 import { validateRequest } from "@common/middleware/validateRequest";
 import { createBookingSchema } from "./../core/booking.validation";
@@ -16,5 +22,8 @@ router.post(
 
 router.get("/", authenticate, getBookings);
 router.patch('/:bookingId', authenticate, requireAdmin, updateBookingStatus);
+
+router.patch('/:bookingId/payment', authenticate, updatePaymentStatus);
+router.delete('/:bookingId', authenticate, deleteBooking);
 
 export default router;

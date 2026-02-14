@@ -116,3 +116,20 @@ export const updateBookingStatusInDB = async (bookingId: string, status: string)
         data: {bookingStatus: status as any} // Cast if using strict Enums
     });
 };
+
+// ... imports
+
+// 1. Update Payment
+export const updatePaymentStatusInDB = async (bookingId: string, status: string) => {
+    return prisma.booking.update({
+        where: {bookingId},
+        data: {paymentStatus: status as any}
+    });
+};
+
+// 2. Delete Booking
+export const deleteBookingFromDB = async (bookingId: string) => {
+    return prisma.booking.delete({
+        where: {bookingId}
+    });
+};
