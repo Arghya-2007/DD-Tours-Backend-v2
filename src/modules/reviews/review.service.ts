@@ -48,3 +48,10 @@ export const getAllReviews = async () => {
         orderBy: {createdAt: 'desc'}
     });
 };
+
+// Delete Review
+export const deleteReviewFromDB = async (reviewId: string) => {
+    return prisma.review.delete({
+        where: { reviewId }
+    });
+};

@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { createReview, getAllReviews } from "./review.controller";
-import { authenticate } from "@common/middleware/auth.middleware";
+import {createReview, deleteReview, getAllReviews} from "./review.controller";
+import {authenticate, requireAdmin} from "@common/middleware/auth.middleware";
 
 const router = Router();
 
@@ -9,5 +9,8 @@ router.post("/", authenticate, createReview);
 
 // 🔓 Anyone can read the "Wall of Love"
 router.get("/", getAllReviews);
+
+// Protected (Admin)
+router.delete("/:reviewId", authenticate, requireAdmin, deleteReview);
 
 export default router;

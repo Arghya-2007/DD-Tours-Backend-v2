@@ -34,3 +34,20 @@ export const getAllReviews = async (req: Request, res: Response) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
+// Delete Review (Admin Only)
+export const deleteReview = async (req: AuthRequest, res: Response) => {
+    try {
+        const { reviewId } = req.params;
+        if (!reviewId) throw new Error("Review ID is required");
+
+        await reviewService.deleteReviewFromDB(reviewId);
+
+        res.status(200).json({
+            success: true,
+            message: "Review deleted successfully"
+        });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
