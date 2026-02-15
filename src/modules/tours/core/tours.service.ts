@@ -178,3 +178,9 @@ export const getTourStatsFromDB = async () => {
         categoryBreakdown: categoryStats
     };
 };
+
+export const getTourBySlug = async (slug: string): Promise<Tour | null> => {
+    return prisma.tour.findUnique({
+        where: {slug: slug}
+    });
+};

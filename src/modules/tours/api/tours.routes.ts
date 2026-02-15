@@ -6,7 +6,8 @@ import {
     getTourById,   // 👈 NEW: For Admin Edit
     getTourStats,  // 👈 NEW: For Dashboard Charts
     updateTour,
-    deleteTour
+    deleteTour,
+    getTourBySlug
 } from "./tours.controller"; // Ensure filename matches (tour vs tours)
 import { authenticate, requireAdmin } from "@common/middleware/auth.middleware";
 import { validateRequest } from "@common/middleware/validateRequest";
@@ -76,5 +77,6 @@ router.delete(
 // 7. Get Single Tour by Slug (MUST be last GET route)
 // Usage: GET /api/v1/tours/grand-goa-trip
 router.get("/:slug", getSingleTour);
+router.get('/slug/:slug', getTourBySlug);
 
 export default router;

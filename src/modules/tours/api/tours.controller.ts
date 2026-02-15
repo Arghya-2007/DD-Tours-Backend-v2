@@ -1,6 +1,7 @@
-import { Request, Response } from "express";
+import {NextFunction, Request, Response} from "express";
 import * as tourService from "./../core/tours.service";
-import  redis  from "../../../app/redis"; // Check your import path
+import  redis  from "../../../app/redis";
+import prisma from "../../../app/database"; // Check your import path
 
 // Helper to clear list caches
 const clearListCache = async () => {
@@ -191,5 +192,25 @@ export const getTourStats = async (req: Request, res: Response) => {
         });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const getTourBySlug = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { slug } = req.params;
+
+        // Use the service function we just created
+        const tour = await tourService.getTourBySlug(slug);
+
+        if (!tour) {
+            console.log("Error")
+        }
+
+        res.status(200).json({
+            status: 'success',
+            data: tour
+        });
+    } catch (error) {
+        next(error);
     }
 };
