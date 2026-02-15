@@ -16,6 +16,7 @@ import reviewRoutes from "@modules/reviews/review.routes";
 import adminRoutes from "@modules/admin/admin.routes";
 import uploadRoutes from "@modules/upload/upload.routes";
 import settingsRoutes from "@modules/settings/settings.routes";
+import blogRoutes from "@modules/blog/blog.routes";
 
 const app: Application = express();
 
@@ -88,6 +89,7 @@ app.use("/api/v1/tours", tourRoutes);
 app.use("/api/v1/bookings", bookingRoutes);
 app.use("/api/v1/payment", paymentRoutes);
 app.use("/api/v1/reviews", reviewRoutes);
+app.use("/api/v1/blogs", blogRoutes)
 app.use("/api/v1/admin", adminRoutes);
 app.use("/api/v1/upload", uploadRoutes);
 app.use("/api/v1/settings", settingsRoutes);
