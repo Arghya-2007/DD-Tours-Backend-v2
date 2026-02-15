@@ -155,3 +155,14 @@ model Review {
   // Relation
   user User @relation(fields: [userId], references: [userId])
 }
+
+model SystemSettings {
+  id             String @id @default("global_settings") // Hardcoded ID ensuring only 1 row
+  siteName       String @default("DD Tours & Travels")
+  supportEmail   String @default("support@ddtours.com")
+  supportPhone   String @default("+91-9876543210")
+  currency       String @default("INR")
+  taxRate        Float  @default(18.0) // GST %
+
+  updatedAt      DateTime @updatedAt
+}
