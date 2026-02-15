@@ -29,7 +29,7 @@ const allowedOrigins = [
     'https://dd-tours-admin-v2.vercel.app', // Your Vercel Admin
     'https://dd-admin-v2.onrender.com',     // If you have a separate Render frontend
     'http://localhost:5173',                // Local Development
-    'http://localhost:4173'                 // Vite Preview
+    'http://localhost:3000'                 // Vite Preview
 ];
 
 const corsOptions: cors.CorsOptions = {
