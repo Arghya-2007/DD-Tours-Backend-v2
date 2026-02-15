@@ -1,11 +1,8 @@
 import express, { Application, Request, Response } from 'express';
-import cors from 'cors'; // ✅ We will actually use this now
+import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from "cookie-parser";
-
-// Middleware Imports
 import { apiLimiter } from '@common/middleware/security.middleware';
-// ⚠️ Note: I removed 'checkOrigin' from imports because standard cors() handles this better.
 
 // Route Imports
 import { authRoutes } from "../modules/auth";
@@ -29,19 +26,21 @@ app.set('trust proxy', 1);
 // 🚨 CRITICAL FIX 2: Correct CORS Configuration
 // ==========================================
 const allowedOrigins = [
-    'https://dd-tours-admin-v2.vercel.app/',
-    'https://dd-admin-v2.onrender.com',
-    'http://localhost:5173',
+    'https://dd-tours-admin-v2.vercel.app', // Your Vercel Admin
+    'https://dd-admin-v2.onrender.com',     // If you have a separate Render frontend
+    'http://localhost:5173',                // Local Development
+    'http://localhost:4173'                 // Vite Preview
 ];
 
-const corsOptions = {
-    origin: (origin: any, callback: any) => {
+const corsOptions: cors.CorsOptions = {
+    origin: (origin, callback) => {
         // Allow requests with no origin (like Postman, Mobile Apps, or curl)
         if (!origin) return callback(null, true);
 
         if (allowedOrigins.indexOf(origin) !== -1) {
             callback(null, true); // Allowed
         } else {
+            console.error(`Blocked by CORS: ${origin}`); // Log the blocked origin for debugging
             callback(new Error('Not allowed by CORS')); // Blocked
         }
     },
@@ -50,17 +49,18 @@ const corsOptions = {
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 };
 
-// 1. Apply CORS immediately
+// 1. Apply CORS globally
 app.use(cors(corsOptions));
 
 // 2. Handle Preflight Requests Explicitly
 app.options('*', cors(corsOptions));
 
-
 // ==========================================
 // 3. Global Basics
 // ==========================================
-app.use(express.json({ limit: '10kb' })); // Added limit for safety
+// Increase limit for image uploads (base64) if needed, otherwise 10kb is fine
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 app.use(helmet());
 
@@ -78,6 +78,7 @@ app.get('/', (_req: Request, res: Response) => {
 // ==========================================
 // 5. Rate Limiting (Apply only to API routes)
 // ==========================================
+// Note: Ensure apiLimiter is configured correctly to not block your own Admin panel
 app.use('/api', apiLimiter);
 
 // ==========================================
@@ -88,7 +89,7 @@ app.use("/api/v1/tours", tourRoutes);
 app.use("/api/v1/bookings", bookingRoutes);
 app.use("/api/v1/payment", paymentRoutes);
 app.use("/api/v1/reviews", reviewRoutes);
-app.use("/api/v1/blogs", blogRoutes)
+app.use("/api/v1/blogs", blogRoutes);
 app.use("/api/v1/admin", adminRoutes);
 app.use("/api/v1/upload", uploadRoutes);
 app.use("/api/v1/settings", settingsRoutes);
