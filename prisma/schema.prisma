@@ -23,7 +23,7 @@ model User {
   dob          DateTime?
 
   // 🆕 NEW FIELD: User Address
-  userAddress  String?   @db.Text
+  userAddress String? @db.Text
 
   // System fields
   role      Role     @default(USER) // USER or ADMIN
@@ -33,6 +33,7 @@ model User {
   // Relations
   bookings Booking[]
   reviews  Review[]
+  blogs    Blog[]
 }
 
 enum Role {
@@ -54,8 +55,8 @@ model Tour {
 
   // 🆕 NEW FIELDS (Location & Category)
   // Made optional (?) to prevent migration errors with existing data
-  startLocation   String?  // e.g., "Kolkata", "Delhi"
-  tourCategory    String?  // e.g., "Adventure", "Relaxation"
+  startLocation String? // e.g., "Kolkata", "Delhi"
+  tourCategory  String? // e.g., "Adventure", "Relaxation"
 
   // Date Logic
   expectedMonth   String?
@@ -157,12 +158,40 @@ model Review {
 }
 
 model SystemSettings {
-  id             String @id @default("global_settings") // Hardcoded ID ensuring only 1 row
-  siteName       String @default("DD Tours & Travels")
-  supportEmail   String @default("support@ddtours.com")
-  supportPhone   String @default("+91-9876543210")
-  currency       String @default("INR")
-  taxRate        Float  @default(18.0) // GST %
+  id           String @id @default("global_settings") // Hardcoded ID ensuring only 1 row
+  siteName     String @default("DD Tours & Travels")
+  supportEmail String @default("support@ddtours.com")
+  supportPhone String @default("+91-9876543210")
+  currency     String @default("INR")
+  taxRate      Float  @default(18.0) // GST %
 
-  updatedAt      DateTime @updatedAt
+  updatedAt DateTime @updatedAt
+}
+
+model Blog {
+  id      String  @id @default(uuid())
+  title   String
+  slug    String  @unique
+  content String  @db.Text
+  excerpt String? @db.Text
+
+  // Media
+  coverImage String?
+  images     String[]
+
+  // 🆕 NEW VIDEO FIELDS
+  youtubeUrl  String? // Optional: https://youtu.be/...
+  facebookUrl String? // Optional: https://fb.watch/...
+
+  category String
+  tags     String[]
+  authorId String
+
+  isPublished Boolean @default(false)
+  views       Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  author User @relation(fields: [authorId], references: [userId])
 }

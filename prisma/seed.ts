@@ -7,17 +7,23 @@ async function main() {
     console.log('🌱 Starting Database Seeding...');
 
     // ==========================================
-    // 0. CLEANUP (Optional: Clear old data to avoid duplicates)
+    // 0. CLEANUP (Order matters for Foreign Keys!)
     // ==========================================
-     await prisma.review.deleteMany();
-     await prisma.booking.deleteMany();
-     await prisma.tour.deleteMany();
-     await prisma.user.deleteMany();
-     await prisma.systemSettings.deleteMany();
-     console.log('🧹 Old data cleared');
+    // We delete children first, then parents
+    try {
+        await prisma.review.deleteMany();
+        await prisma.blog.deleteMany();     // 👈 Added Blog cleanup
+        await prisma.booking.deleteMany();
+        await prisma.tour.deleteMany();
+        await prisma.user.deleteMany();
+        await prisma.systemSettings.deleteMany();
+        console.log('🧹 Old data cleared');
+    } catch (error) {
+        console.log('⚠️ Cleanup skipped or partial (first run)');
+    }
 
     // ==========================================
-    // 1. SYSTEM SETTINGS (New Feature)
+    // 1. SYSTEM SETTINGS
     // ==========================================
     await prisma.systemSettings.upsert({
         where: { id: 'global_settings' },
@@ -38,11 +44,9 @@ async function main() {
     // ==========================================
     const hashedPassword = await bcrypt.hash('password123', 10);
 
-    // A. Super Admin
-    const admin = await prisma.user.upsert({
-        where: { userEmail: 'admin@ddtours.com' },
-        update: {},
-        create: {
+    // A. Super Admin (Will author the blogs)
+    const admin = await prisma.user.create({
+        data: {
             userName: 'Super Admin',
             userEmail: 'admin@ddtours.com',
             password: hashedPassword,
@@ -53,30 +57,26 @@ async function main() {
     });
 
     // B. User 1 (Rahul)
-    const user1 = await prisma.user.upsert({
-        where: { userEmail: 'rahul@gmail.com' },
-        update: {},
-        create: {
+    const user1 = await prisma.user.create({
+        data: {
             userName: 'Rahul Sharma',
             userEmail: 'rahul@gmail.com',
             password: hashedPassword,
             phoneNumber: '+919988776655',
             role: Role.USER,
-            userAddress: 'Salt Lake Sector V, Kolkata' // 👈 New Field
+            userAddress: 'Salt Lake Sector V, Kolkata'
         },
     });
 
     // C. User 2 (Priya)
-    const user2 = await prisma.user.upsert({
-        where: { userEmail: 'priya@gmail.com' },
-        update: {},
-        create: {
+    const user2 = await prisma.user.create({
+        data: {
             userName: 'Priya Verma',
             userEmail: 'priya@gmail.com',
             password: hashedPassword,
             phoneNumber: '+918877665544',
             role: Role.USER,
-            userAddress: 'Indiranagar, Bangalore' // 👈 New Field
+            userAddress: 'Indiranagar, Bangalore'
         },
     });
 
@@ -86,103 +86,94 @@ async function main() {
     // 3. TOUR DATA
     // ==========================================
 
-    // Tour 1: Manali (Adventure)
-    const tour1 = await prisma.tour.upsert({
-        where: { slug: 'majestic-manali-escape' },
-        update: {},
-        create: {
+    // Tour 1: Manali
+    const tour1 = await prisma.tour.create({
+        data: {
             tourTitle: 'Majestic Manali Escape',
             slug: 'majestic-manali-escape',
             tourDuration: '5 Days / 4 Nights',
             tourDescription: 'Experience the snow-capped mountains and vibrant culture of Manali. Includes stay, food, and Volvo bus.',
             tourPrice: 12000,
-
-            // 🆕 New Fields
             startLocation: 'Delhi',
             tourCategory: 'Adventure',
-
             expectedMonth: 'December',
             isFixedDate: false,
-
             coveredPlaces: ['Hadimba Temple', 'Solang Valley', 'Rohtang Pass'],
             includedItems: ['Breakfast', 'Dinner', 'Hotel Stay', 'Volvo Bus'],
-            images: [
-                'https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?auto=format&fit=crop&q=80',
-                'https://images.unsplash.com/photo-1593182440959-9d5165b29b59?auto=format&fit=crop&q=80'
-            ],
-
+            images: ['https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?auto=format&fit=crop&q=80'],
             tourStatus: TourStatus.UPCOMING,
             maxSeats: 30,
-            availableSeats: 28, // Reduced for testing booking logic
+            availableSeats: 28,
         },
     });
 
-    // Tour 2: Goa (Relaxation)
-    const tour2 = await prisma.tour.upsert({
-        where: { slug: 'goa-beach-party-2026' },
-        update: {},
-        create: {
+    // Tour 2: Goa
+    const tour2 = await prisma.tour.create({
+        data: {
             tourTitle: 'Goa Beach Party',
             slug: 'goa-beach-party-2026',
             tourDuration: '4 Days / 3 Nights',
             tourDescription: 'Sun, Sand, and Sea! Enjoy the best beaches of North Goa with a private cruise party.',
             tourPrice: 15000,
-
-            // 🆕 New Fields
             startLocation: 'Mumbai',
             tourCategory: 'Relaxation',
-
             isFixedDate: true,
             fixedDate: new Date('2026-11-15T00:00:00Z'),
             bookingDeadline: new Date('2026-11-01T00:00:00Z'),
-
             coveredPlaces: ['Baga Beach', 'Calangute', 'Fort Aguada'],
             includedItems: ['Breakfast', 'Scooty Rental', 'Cruise Ticket'],
             images: ['https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&q=80'],
-
             tourStatus: TourStatus.UPCOMING,
             maxSeats: 20,
             availableSeats: 20,
         },
     });
 
-    // Tour 3: Kedarnath (Pilgrimage)
-    const tour3 = await prisma.tour.upsert({
-        where: { slug: 'kedarnath-yatra' },
-        update: {},
-        create: {
-            tourTitle: 'Divine Kedarnath Yatra',
-            slug: 'kedarnath-yatra',
-            tourDuration: '6 Days / 5 Nights',
-            tourDescription: 'A spiritual journey to one of the holiest shrines of Lord Shiva.',
-            tourPrice: 18000,
-
-            // 🆕 New Fields
-            startLocation: 'Haridwar',
-            tourCategory: 'Pilgrimage',
-
-            expectedMonth: 'May',
-            isFixedDate: false,
-
-            coveredPlaces: ['Guptkashi', 'Kedarnath Temple', 'Rishikesh'],
-            includedItems: ['Vegetarian Meals', 'Hotel', 'Guide'],
-            images: ['https://images.unsplash.com/photo-1623164478200-c9a785312386?auto=format&fit=crop&q=80'],
-
-            tourStatus: TourStatus.UPCOMING,
-            maxSeats: 15,
-            availableSeats: 15,
-        },
-    });
-
     console.log('✅ Tours Created');
 
     // ==========================================
-    // 4. BOOKING DATA
+    // 4. BLOG DATA (🆕 NEW SECTION)
     // ==========================================
 
-    // Booking 1: Rahul books Manali (Confirmed & Paid)
-    // We check if exists first to avoid duplicate errors on re-seed
-    const booking1 = await prisma.booking.create({
+    await prisma.blog.create({
+        data: {
+            title: '10 Hidden Gems in Manali You Must Visit',
+            slug: '10-hidden-gems-in-manali',
+            content: 'Manali is not just about Mall Road and Solang Valley. Explore the hidden waterfalls and ancient temples...',
+            excerpt: 'Discover the secret spots of Manali that tourists often miss.',
+            category: 'Travel Tips',
+            tags: ['Manali', 'Solo Travel', 'Mountains'],
+            coverImage: 'https://images.unsplash.com/photo-1593182440959-9d5165b29b59?auto=format&fit=crop&q=80',
+            youtubeUrl: 'https://youtu.be/dummy-video-id',
+            isPublished: true,
+            views: 125,
+            authorId: admin.userId // Link to Admin
+        }
+    });
+
+    await prisma.blog.create({
+        data: {
+            title: 'Why Goa in November is a Vibe',
+            slug: 'why-goa-in-november',
+            content: 'November marks the beginning of the party season in Goa. The weather is perfect and the clubs are buzzing...',
+            excerpt: 'Planning a winter trip? Here is why Goa should be your top choice.',
+            category: 'Destinations',
+            tags: ['Goa', 'Party', 'Beach'],
+            coverImage: 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&q=80',
+            facebookUrl: 'https://facebook.com/watch/dummy-video',
+            isPublished: true,
+            views: 89,
+            authorId: admin.userId
+        }
+    });
+
+    console.log('✅ Blogs Created');
+
+    // ==========================================
+    // 5. BOOKING DATA
+    // ==========================================
+
+    await prisma.booking.create({
         data: {
             userId: user1.userId,
             tourId: tour1.tourId,
@@ -200,16 +191,13 @@ async function main() {
         },
     });
 
-    // Booking 2: Priya books Manali (Pending)
     await prisma.booking.create({
         data: {
             userId: user2.userId,
             tourId: tour1.tourId,
             totalGuests: 1,
             totalPrice: 12000,
-            guestDetails: [
-                { name: 'Priya Verma', age: 24, gender: 'Female' }
-            ],
+            guestDetails: [{ name: 'Priya Verma', age: 24, gender: 'Female' }],
             bookingStatus: BookingStatus.PENDING,
             paymentStatus: PaymentStatus.PENDING,
             paymentMethod: PaymentMethod.CREDIT_CARD,
@@ -220,10 +208,9 @@ async function main() {
     console.log('✅ Bookings Created');
 
     // ==========================================
-    // 5. REVIEW DATA (New Feature)
+    // 6. REVIEW DATA
     // ==========================================
 
-    // Review 1: Rahul reviews Manali (Since he is Confirmed)
     await prisma.review.create({
         data: {
             userId: user1.userId,
