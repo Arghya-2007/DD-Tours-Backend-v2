@@ -29,10 +29,9 @@ app.set('trust proxy', 1);
 // 🚨 CRITICAL FIX 2: Correct CORS Configuration
 // ==========================================
 const allowedOrigins = [
-    'https://dd-tours-backend-v2.onrender.com',
+    'https://dd-tours-admin-v2.vercel.app/',
     'https://dd-admin-v2.onrender.com',
     'http://localhost:5173',
-    'http://localhost:5174'
 ];
 
 const corsOptions = {
