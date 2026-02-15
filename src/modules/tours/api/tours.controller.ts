@@ -1,14 +1,23 @@
 import { Request, Response } from "express";
 import * as tourService from "./../core/tours.service";
-import redis, { clearCache } from "../../../app/redis";
+import  redis  from "../../../app/redis"; // Check your import path
 
-// 1. CREATE TOUR (Admin Only)
+// Helper to clear list caches
+const clearListCache = async () => {
+    const keys = await redis.keys("tours:*");
+    if (keys.length > 0) await redis.del(keys);
+};
+
+// ==========================================
+// 1. CREATE TOUR (Admin)
+// ==========================================
 export const createTour = async (req: Request, res: Response) => {
     try {
+        // Validation happens in middleware, so we trust req.body here
         const result = await tourService.createTourIntoDB(req.body);
 
-        // 🧹 INVALIDATION: New data added, so the "List" cache is now stale.
-        await clearCache("tours:*");
+        // 🧹 CACHE: New data added, invalidate lists
+        await clearListCache();
 
         res.status(201).json({
             success: true,
@@ -20,28 +29,30 @@ export const createTour = async (req: Request, res: Response) => {
     }
 };
 
-// 2. GET ALL TOURS (Public + Cached ⚡️)
+// ==========================================
+// 2. GET ALL TOURS (Public + Filter + Cache)
+// ==========================================
 export const getAllTours = async (req: Request, res: Response) => {
     try {
-        // 🔑 Unique Key: depends on query params (page, search, etc.)
-        // Example: "tours:{"page":"1","limit":"10"}"
-        const cacheKey = `tours:${JSON.stringify(req.query)}`;
+        // Create a unique key based on ALL query params
+        // e.g. "tours:page=1&limit=10&category=Adventure"
+        const queryString = new URLSearchParams(req.query as any).toString();
+        const cacheKey = `tours:${queryString}`;
 
         // A. Check Redis
         const cachedData = await redis.get(cacheKey);
         if (cachedData) {
             return res.status(200).json({
                 success: true,
-                message: "Tours fetched successfully (Fetched from Cache ⚡️)",
-                ...JSON.parse(cachedData) // Spread meta & data
+                message: "Tours fetched from Cache ⚡️",
+                ...JSON.parse(cachedData)
             });
         }
 
-        // B. If you Miss, Query DB
+        // B. Query DB (Service handles filtering)
         const result = await tourService.getAllToursFromDB(req.query);
 
         // C. Save to Redis (TTL: 1 Hour)
-        // We cache the whole response object (meta + data)
         await redis.set(cacheKey, JSON.stringify(result), "EX", 3600);
 
         res.status(200).json({
@@ -55,7 +66,9 @@ export const getAllTours = async (req: Request, res: Response) => {
     }
 };
 
-// 3. GET SINGLE TOUR (Public + Cached ⚡️)
+// ==========================================
+// 3. GET SINGLE TOUR BY SLUG (Public)
+// ==========================================
 export const getSingleTour = async (req: Request, res: Response) => {
     try {
         const { slug } = req.params;
@@ -66,7 +79,7 @@ export const getSingleTour = async (req: Request, res: Response) => {
         if (cachedData) {
             return res.status(200).json({
                 success: true,
-                message: "Tour fetched successfully (Cache ⚡️)",
+                message: "Tour fetched from Cache ⚡️",
                 data: JSON.parse(cachedData)
             });
         }
@@ -78,7 +91,7 @@ export const getSingleTour = async (req: Request, res: Response) => {
             return res.status(404).json({ success: false, message: "Tour not found" });
         }
 
-        // C. Save to Redis (TTL: 1 Hour)
+        // C. Save to Redis
         await redis.set(cacheKey, JSON.stringify(result), "EX", 3600);
 
         res.status(200).json({
@@ -91,17 +104,39 @@ export const getSingleTour = async (req: Request, res: Response) => {
     }
 };
 
-// 4. UPDATE TOUR (Admin Only)
+// ==========================================
+// 4. GET SINGLE TOUR BY ID (Admin)
+// ==========================================
+// 🆕 Needed for Edit Pages in Admin Panel
+export const getTourById = async (req: Request, res: Response) => {
+    try {
+        const { tourId } = req.params;
+        const result = await tourService.getTourByIdFromDB(tourId);
+
+        if (!result) throw new Error("Tour not found");
+
+        res.status(200).json({
+            success: true,
+            data: result
+        });
+    } catch (error: any) {
+        res.status(404).json({ success: false, message: error.message });
+    }
+};
+
+// ==========================================
+// 5. UPDATE TOUR (Admin)
+// ==========================================
 export const updateTour = async (req: Request, res: Response) => {
     try {
         const { tourId } = req.params;
         const result = await tourService.updateTourInDB(tourId, req.body);
 
-        // 🧹 INVALIDATION:
-        // 1. Clear the specific tour's cache (if it exists)
-        // 2. Clear ALL list caches (because price/details changed)
-        await redis.del(`tour:${result.slug}`);
-        await clearCache("tours:*");
+        // 🧹 CACHE INVALIDATION
+        // 1. Clear this specific tour's slug cache
+        if(result.slug) await redis.del(`tour:${result.slug}`);
+        // 2. Clear all list pages (price/details changed)
+        await clearListCache();
 
         res.status(200).json({
             success: true,
@@ -113,27 +148,48 @@ export const updateTour = async (req: Request, res: Response) => {
     }
 };
 
-// 5. DELETE TOUR (Admin Only)
+// ==========================================
+// 6. DELETE TOUR (Admin)
+// ==========================================
 export const deleteTour = async (req: Request, res: Response) => {
     try {
         const { tourId } = req.params;
 
-        // First get the tour to know the slug (for cache clearing)
-        // Note: If you don't have a service for getById, you might need to fetch it first.
-        // For now, let's assume we just clear the list.
-        // To be perfect, we should find the slug first.
+        // 🔍 Step 1: Find the tour first (We need the SLUG to clear cache)
+        const tour = await tourService.getTourByIdFromDB(tourId);
 
+        if (!tour) {
+            return res.status(404).json({ success: false, message: "Tour not found" });
+        }
+
+        // 🗑️ Step 2: Delete from DB
         await tourService.deleteTourFromDB(tourId);
 
-        // 🧹 INVALIDATION
-        await clearCache("tours:*");
-        // Ideally: await redis.del(`tour:${deletedTourSlug}`);
+        // 🧹 Step 3: Clear Caches
+        await redis.del(`tour:${tour.slug}`); // Clear specific
+        await clearListCache(); // Clear lists
 
         res.status(200).json({
             success: true,
             message: "Tour deleted successfully"
         });
     } catch (error: any) {
-        res.status(400).json({ success: false, message: error.message });
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// ==========================================
+// 7. GET TOUR STATS (Admin Dashboard)
+// ==========================================
+// 🆕 Aggregation: "Avg Price", "Total Tours by Category"
+export const getTourStats = async (req: Request, res: Response) => {
+    try {
+        const stats = await tourService.getTourStatsFromDB();
+        res.status(200).json({
+            success: true,
+            data: stats
+        });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
     }
 };

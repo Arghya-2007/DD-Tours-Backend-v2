@@ -6,7 +6,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url = env("DATABASE_URL")
+  url      = env("DATABASE_URL")
 }
 
 // ==========================================
@@ -18,9 +18,12 @@ model User {
   userName     String
   userEmail    String    @unique
   password     String // Hashed
-  phoneNumber  String // String is better for phone numbers (preserves +91)
-  aadharNumber String? // Optional? (Not everyone might have it ready at signup)
+  phoneNumber  String
+  aadharNumber String?
   dob          DateTime?
+
+  // 🆕 NEW FIELD: User Address
+  userAddress  String?   @db.Text
 
   // System fields
   role      Role     @default(USER) // USER or ADMIN
@@ -44,26 +47,31 @@ model Tour {
   // Your requirements
   tourId          String @id @default(uuid())
   tourTitle       String
-  slug            String @unique // For SEO URLs: "darjeeling-trip"
-  tourDuration    String // e.g., "5 Days / 4 Nights"
-  tourDescription String @db.Text // Allows long text
+  slug            String @unique
+  tourDuration    String
+  tourDescription String @db.Text
   tourPrice       Float
 
+  // 🆕 NEW FIELDS (Location & Category)
+  // Made optional (?) to prevent migration errors with existing data
+  startLocation   String?  // e.g., "Kolkata", "Delhi"
+  tourCategory    String?  // e.g., "Adventure", "Relaxation"
+
   // Date Logic
-  expectedMonth   String? // e.g., "October" (Used if isFixedDate = false)
+  expectedMonth   String?
   isFixedDate     Boolean   @default(false)
   fixedDate       DateTime?
   bookingDeadline DateTime?
 
-  // Arrays (Postgres supports this natively)
+  // Arrays
   coveredPlaces String[]
-  includedItems String[] // e.g., ["Breakfast", "Hotel", "Bus"]
-  images        String[] // URLs from Cloudinary
+  includedItems String[]
+  images        String[]
 
   // Status & Seats
   tourStatus     TourStatus @default(UPCOMING)
   maxSeats       Int
-  availableSeats Int // ⚠️ Logic: Decrease this when a booking is confirmed!
+  availableSeats Int
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -84,7 +92,7 @@ enum TourStatus {
 model Booking {
   bookingId String @id @default(uuid())
 
-  // Relations (Required Tour & User Data)
+  // Relations
   user   User   @relation(fields: [userId], references: [userId])
   userId String
   tour   Tour   @relation(fields: [tourId], references: [tourId])
@@ -93,20 +101,20 @@ model Booking {
   // Booking Info
   totalGuests Int
   totalPrice  Float
-  bookingDate DateTime @default(now()) // The "createdAt"
+  bookingDate DateTime @default(now())
 
-  // ⭐️ New Field: Store details of all passengers (Name, Age, Gender)
+  // Passenger Details
   guestDetails Json?
 
   // Statuses
   bookingStatus BookingStatus @default(PENDING)
 
   // Payment Info
-  paymentMethod PaymentMethod? // ONLINE or OFFLINE
+  paymentMethod PaymentMethod?
   paymentStatus PaymentStatus  @default(PENDING)
   paymentTime   DateTime?
-  paymentId     String? // From Razorpay
-  transactionId String? // Bank Transaction ID
+  paymentId     String?
+  transactionId String?
 }
 
 enum BookingStatus {
@@ -121,6 +129,7 @@ enum PaymentMethod {
   UPI
   NET_BANKING
   OFFLINE
+  UNKNOWN
 }
 
 enum PaymentStatus {
@@ -130,18 +139,19 @@ enum PaymentStatus {
   REFUNDED
 }
 
+// ==========================================
+// 5. REVIEW MODEL
+// ==========================================
 model Review {
   reviewId String @id @default(uuid())
   userId   String
 
-  tourName   String // 📸 Snapshot: We store the name (e.g., "Grand Swiss Trip")
+  tourName   String
   reviewText String
   rating     Int
-  photoUrl   String? // Optional: Users can upload a photo of their trip
+  photoUrl   String?
   createdAt  DateTime @default(now())
 
-  // Relation: Link to User (so we show their name/avatar)
+  // Relation
   user User @relation(fields: [userId], references: [userId])
-
-  // ⚠️ NO Relation to Tour (Because Tour will be deleted)
 }
