@@ -22,7 +22,7 @@ export const refreshAccessToken = async (token: string) => {
         { expiresIn: "15m" }
     );
 
-    return { newAccessToken };
+    return { newAccessToken, user};
 };
 
 // 1. REGISTER LOGIC

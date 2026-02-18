@@ -157,6 +157,10 @@ model Review {
   user User @relation(fields: [userId], references: [userId])
 }
 
+// ==========================================
+// 6. SYSTEM SETTINGS MODEL
+// ==========================================
+
 model SystemSettings {
   id           String @id @default("global_settings") // Hardcoded ID ensuring only 1 row
   siteName     String @default("DD Tours & Travels")
@@ -167,6 +171,10 @@ model SystemSettings {
 
   updatedAt DateTime @updatedAt
 }
+
+// ==========================================
+// 7. BLOG MODEL
+// ==========================================
 
 model Blog {
   id      String  @id @default(uuid())

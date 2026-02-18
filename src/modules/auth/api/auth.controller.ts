@@ -70,11 +70,12 @@ export const refreshTokenHandler = async (req: Request, res: Response) => {
         }
 
         // Service will throw error if token is invalid
-        const { newAccessToken } = await authService.refreshAccessToken(refreshToken);
+        const { newAccessToken, user} = await authService.refreshAccessToken(refreshToken);
 
         res.status(200).json({
             success: true,
-            accessToken: newAccessToken
+            accessToken: newAccessToken,
+            user: { id: user.userId, name: user.userName, role: user.role }
         });
 
     } catch (error) {
