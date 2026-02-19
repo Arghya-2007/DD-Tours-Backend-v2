@@ -1,6 +1,18 @@
 import { Request, Response } from "express";
 import * as bookingService from "./../core/booking.service";
 import { AuthRequest } from "@common/middleware/auth.middleware"; // Ensure this path is correct
+import redis from "../../../app/redis";
+
+const clearTourCaches = async () => {
+    try {
+        const keys = await redis.keys("tours:*");
+        if (keys.length > 0) {
+            await redis.del(keys);
+        }
+    } catch (err) {
+        console.error("Redis Cache Clear Error:", err);
+    }
+};
 
 // ==========================================
 // 1. CREATE BOOKING (Transaction Safe)
@@ -12,6 +24,8 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
 
         // Pass userId and body to service (Service handles Capacity Transaction)
         const result = await bookingService.createBookingIntoDB(userId, req.body);
+
+        await clearTourCaches();
 
         res.status(201).json({
             success: true,
@@ -93,6 +107,8 @@ export const updateBookingStatus = async (req: AuthRequest, res: Response) => {
 
         const result = await bookingService.updateBookingStatusInDB(bookingId, bookingStatus);
 
+          await clearTourCaches();
+
         res.status(200).json({
             success: true,
             message: `Booking status updated to ${bookingStatus}`,
@@ -116,6 +132,8 @@ export const updatePaymentStatus = async (req: AuthRequest, res: Response) => {
 
         const result = await bookingService.updatePaymentStatusInDB(bookingId, paymentStatus);
 
+          await clearTourCaches();
+
         res.status(200).json({
             success: true,
             message: "Payment status updated successfully",
@@ -135,6 +153,8 @@ export const deleteBooking = async (req: AuthRequest, res: Response) => {
         if (!bookingId) throw new Error("Booking ID is required");
 
         await bookingService.deleteBookingFromDB(bookingId);
+
+          await clearTourCaches();
 
         res.status(200).json({
             success: true,
