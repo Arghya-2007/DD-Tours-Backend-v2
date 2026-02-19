@@ -8,6 +8,10 @@ const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || "access_fallback";
 const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "refresh_fallback";
 
 export const refreshAccessToken = async (token: string) => {
+    // 🚨 CRITICAL SECURITY FIX: Check if token is blacklisted in Redis first!
+    const isBlacklisted = await redis.get(`blacklist:${token}`);
+    if (isBlacklisted) throw new Error("Token has been revoked. Please log in again.");
+
     // 1. Verify the Refresh Token
     const decoded = jwt.verify(token, REFRESH_SECRET) as { userId: string };
 
@@ -22,7 +26,7 @@ export const refreshAccessToken = async (token: string) => {
         { expiresIn: "15m" }
     );
 
-    return { newAccessToken, user};
+    return { newAccessToken, user };
 };
 
 // 1. REGISTER LOGIC
@@ -66,29 +70,37 @@ export const loginUser = async (data: any) => {
     const isMatch = await bcrypt.compare(data.password, user.password);
     if (!isMatch) throw new Error("Invalid credentials");
 
-    // Generate Tokens
+    // Generate Access Token (Always short-lived)
     const accessToken = jwt.sign(
         { userId: user.userId, role: user.role },
         ACCESS_SECRET,
-        { expiresIn: "15m" } // Short life
+        { expiresIn: "15m" }
     );
+
+    // 🚨 ARCHITECTURE FIX: Dynamic Refresh Token Lifespans based on Role
+    // Admins get a strict 1-day token limit. Users get 7 days.
+    const refreshExpiresIn = user.role === Role.ADMIN ? "1d" : "7d";
 
     const refreshToken = jwt.sign(
         { userId: user.userId },
         REFRESH_SECRET,
-        { expiresIn: "7d" } // Long life
+        { expiresIn: refreshExpiresIn }
     );
 
     return {
-        user: { id: user.userId, name: user.userName, role: user.role },
+        user: {
+            id: user.userId,
+            name: user.userName,
+            role: user.role,
+            email: user.userEmail
+        },
         accessToken,
         refreshToken
     };
 };
 
 export const logoutUser = async (token: string) => {
-    // We blacklist the token for 7 days (same time as refresh token expiry)
-    // Key: blacklist:token_string, Value: 'true', Expiry: 7 days in seconds
+    // Blacklist the token in Redis for 7 days maximum
     await redis.set(`blacklist:${token}`, 'true', 'EX', 7 * 24 * 60 * 60);
     return { message: "Logged out successfully" };
 };

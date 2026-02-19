@@ -10,7 +10,6 @@ export interface AuthRequest extends Request {
 }
 
 export const authenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
-    // 1. Get token from header (Authorization: Bearer <token>)
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -20,16 +19,15 @@ export const authenticate = (req: AuthRequest, res: Response, next: NextFunction
     const token = authHeader.split(" ")[1];
 
     try {
-        // 2. Verify Token
         const decoded = jwt.verify(token, ACCESS_SECRET) as { userId: string; role: string };
-        req.user = decoded; // Attach user to request
-        next(); // Pass to next handler
+        req.user = decoded;
+        next();
     } catch (error) {
-        return res.status(403).json({ message: "Forbidden: Invalid token" });
+        return res.status(403).json({ message: "Forbidden: Invalid or expired token" });
     }
 };
 
-// Admin Guard (Only allow if role is ADMIN)
+// Admin Guard (Always use AFTER authenticate)
 export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {
     if (req.user?.role !== "ADMIN") {
         return res.status(403).json({ message: "Forbidden: Admins only" });
@@ -38,16 +36,21 @@ export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction
 };
 
 export const checkBlacklist = async (req: Request, res: Response, next: NextFunction) => {
-    const token = req.cookies.refreshToken;
+    try {
+        const token = req.cookies.refreshToken;
 
-    if (!token) return next(); // If no token, let the next guard handle it
+        if (!token) return next();
 
-    // Check Redis
-    const isBlacklisted = await redis.get(`blacklist:${token}`);
+        // Check Redis safely
+        const isBlacklisted = await redis.get(`blacklist:${token}`);
 
-    if (isBlacklisted) {
-        return res.status(403).json({ message: "Session expired. Please login again." });
+        if (isBlacklisted) {
+            return res.status(403).json({ message: "Session expired. Please login again." });
+        }
+
+        next();
+    } catch (error) {
+        console.error("Redis Blacklist Check Failed:", error);
+        next(error); // Passes to App.ts global error handler
     }
-
-    next();
 };
