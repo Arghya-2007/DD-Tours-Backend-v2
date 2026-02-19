@@ -18,22 +18,21 @@ export const loginHandler = async (req: Request, res: Response) => {
 
         // 🍪 SET SECURE COOKIE (HttpOnly)
         // This prevents XSS attacks because JS cannot read this cookie.
-       res.cookie("refreshToken", refreshToken, {
-           httpOnly: true,
+      // inside loginHandler
+      res.cookie("refreshToken", refreshToken, {
+          httpOnly: true, // Always true (security)
 
-           // 1. MUST be true for Cross-Site cookies (Render -> Localhost)
-           // Render is always HTTPS, so 'true' is safe.
-           secure: true,
+          // 🚨 KEY FIX: False for Localhost (HTTP), True for Render (HTTPS)
+          secure: process.env.NODE_ENV === "production",
 
-           // 2. MUST be 'none' for Localhost testing against Render
-           // If you have your real domain (.ddtours.in) set up, you can switch to 'lax'
-           sameSite: process.env.NODE_ENV === "production" ? 'none' : 'none',
+          // 🚨 KEY FIX: 'lax' is best for Localhost navigation
+          sameSite: process.env.NODE_ENV === "production" ? 'none' : 'lax',
 
-           // 3. Keep domain undefined for localhost
-           domain: process.env.NODE_ENV === "production" ? ".ddtours.in" : undefined,
+          // Keep domain undefined for localhost
+          domain: process.env.NODE_ENV === "production" ? ".ddtours.in" : undefined,
 
-           maxAge: 7 * 24 * 60 * 60 * 1000,
-       });
+          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      });
 
         res.status(200).json({
             success: true,

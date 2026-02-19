@@ -90,7 +90,9 @@ export const getAllBookings = async (userId: string, role: string) => {
                     tourTitle: true,
                     tourDuration: true,
                     tourPrice: true,
-                    // images: true // Uncomment if needed
+                    slug: true,
+                    tourStatus: true,
+                    images: true
                 }
             },
             // Include User details for Admin only
