@@ -153,8 +153,12 @@ export const updateBookingStatusInDB = async (bookingId: string, status: string)
 
         const targetStatus = status as BookingStatus;
 
-        // 2. Logic: If Cancelling, RESTORE seats
-        if (targetStatus === BookingStatus.CANCELLED && existingBooking.bookingStatus !== BookingStatus.CANCELLED) {
+        // 2. Logic: If Cancelling or Failing, RESTORE seats
+        // Make sure we don't restore seats if it was already cancelled or failed
+        const isCurrentlyActive = existingBooking.bookingStatus !== BookingStatus.CANCELLED && existingBooking.bookingStatus !== BookingStatus.FAILED;
+        const isMovingToInactive = targetStatus === BookingStatus.CANCELLED || targetStatus === BookingStatus.FAILED;
+
+        if (isMovingToInactive && isCurrentlyActive) {
             await tx.tour.update({
                 where: { tourId: existingBooking.tourId },
                 data: {
@@ -163,12 +167,15 @@ export const updateBookingStatusInDB = async (bookingId: string, status: string)
             });
         }
 
-        // 3. Logic: If Re-Confirming a Cancelled booking, DECREASE seats again
-        if (targetStatus === BookingStatus.CONFIRMED && existingBooking.bookingStatus === BookingStatus.CANCELLED) {
+        // 3. Logic: If Re-Confirming a Cancelled/Failed booking, DECREASE seats again
+        const isCurrentlyInactive = existingBooking.bookingStatus === BookingStatus.CANCELLED || existingBooking.bookingStatus === BookingStatus.FAILED;
+        const isMovingToActive = targetStatus === BookingStatus.CONFIRMED || targetStatus === BookingStatus.PENDING;
+
+        if (isMovingToActive && isCurrentlyInactive) {
             const tour = await tx.tour.findUnique({ where: { tourId: existingBooking.tourId }});
 
             if(!tour || tour.availableSeats < existingBooking.totalGuests) {
-                throw new Error("Cannot re-confirm: Not enough seats available!");
+                throw new Error(`Cannot re-confirm: Only ${tour?.availableSeats || 0} seats available!`);
             }
 
             await tx.tour.update({
@@ -186,20 +193,93 @@ export const updateBookingStatusInDB = async (bookingId: string, status: string)
 };
 
 // ==========================================
-// 5. UPDATE PAYMENT STATUS
+// 5. UPDATE PAYMENT STATUS (Smart Sync)
 // ==========================================
 export const updatePaymentStatusInDB = async (bookingId: string, status: string) => {
-    return prisma.booking.update({
-        where: { bookingId },
-        data: { paymentStatus: status as PaymentStatus }
+    return await prisma.$transaction(async (tx) => {
+        // 1. Get current booking
+        const existingBooking = await tx.booking.findUnique({
+            where: { bookingId }
+        });
+
+        if (!existingBooking) throw new Error("Booking not found");
+
+        const targetPaymentStatus = status as PaymentStatus;
+        let targetBookingStatus = existingBooking.bookingStatus;
+        let seatsToRestore = 0;
+
+        // 2. Logic: If payment FAILED or REFUNDED
+        // We auto-fail/cancel the booking and flag the seats to be restored
+        if (targetPaymentStatus === PaymentStatus.FAILED || targetPaymentStatus === PaymentStatus.REFUNDED) {
+            const isCurrentlyActive =
+                existingBooking.bookingStatus !== BookingStatus.CANCELLED &&
+                existingBooking.bookingStatus !== BookingStatus.FAILED;
+
+            if (isCurrentlyActive) {
+                // If it's a refund, mark as CANCELLED. If it's a failed payment, mark as FAILED.
+                targetBookingStatus = targetPaymentStatus === PaymentStatus.FAILED
+                    ? BookingStatus.FAILED
+                    : BookingStatus.CANCELLED;
+
+                seatsToRestore = existingBooking.totalGuests;
+            }
+        }
+
+        // 3. Logic: If payment COMPLETED
+        // We auto-confirm the booking if it was still pending
+        if (targetPaymentStatus === PaymentStatus.COMPLETED && existingBooking.bookingStatus === BookingStatus.PENDING) {
+            targetBookingStatus = BookingStatus.CONFIRMED;
+        }
+
+        // 4. Execute Tour Capacity Update (if seats need restoring)
+        if (seatsToRestore > 0) {
+            await tx.tour.update({
+                where: { tourId: existingBooking.tourId },
+                data: {
+                    availableSeats: { increment: seatsToRestore }
+                }
+            });
+        }
+
+        // 5. Update the Booking with BOTH new statuses
+        return await tx.booking.update({
+            where: { bookingId },
+            data: {
+                paymentStatus: targetPaymentStatus,
+                bookingStatus: targetBookingStatus
+            }
+        });
     });
 };
 
 // ==========================================
-// 6. DELETE BOOKING (Hard Delete)
+// 6. DELETE BOOKING (Hard Delete + Capacity Logic)
 // ==========================================
 export const deleteBookingFromDB = async (bookingId: string) => {
-    return prisma.booking.delete({
-        where: { bookingId }
+    return await prisma.$transaction(async (tx) => {
+        // 1. Find the booking before we destroy it so we know how many seats to restore
+        const booking = await tx.booking.findUnique({
+            where: { bookingId }
+        });
+
+        if (!booking) throw new Error("Booking not found");
+
+        // 2. Delete the booking
+        const deletedBooking = await tx.booking.delete({
+            where: { bookingId }
+        });
+
+        // 3. RESTORE SEATS: Only restore if the booking was active (Pending/Confirmed)
+        // If it was already cancelled, the seats were already restored in step 4 above!
+        if (booking.bookingStatus !== BookingStatus.CANCELLED && booking.bookingStatus !== BookingStatus.FAILED) {
+            await tx.tour.update({
+                where: { tourId: booking.tourId },
+                data: {
+                    availableSeats: { increment: booking.totalGuests }
+                }
+            });
+        }
+
+        return deletedBooking;
     });
 };
