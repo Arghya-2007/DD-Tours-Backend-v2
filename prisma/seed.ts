@@ -1,5 +1,6 @@
 import { PrismaClient, TourStatus, BookingStatus, PaymentStatus, Role, PaymentMethod } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import redis from "../src/app/redis";
 
 const prisma = new PrismaClient();
 
@@ -223,6 +224,11 @@ async function main() {
     });
 
     console.log('✅ Reviews Created');
+
+    console.log('🧹 Flushing Redis Cache...');
+        await redis.flushall();
+    console.log('✨ Cache Cleared!');
+
     console.log('🚀 Seeding Completed Successfully!');
 }
 

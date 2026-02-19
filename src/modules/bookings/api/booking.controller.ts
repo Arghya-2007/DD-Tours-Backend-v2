@@ -5,9 +5,15 @@ import redis from "../../../app/redis";
 
 const clearTourCaches = async () => {
     try {
-        const keys = await redis.keys("tours:*");
-        if (keys.length > 0) {
-            await redis.del(keys);
+        const listKeys = await redis.keys("tours:*");
+        if (listKeys.length > 0) {
+            await redis.del(listKeys);
+        }
+
+        // 2. Clear all Single Tour caches (User 'Tour Details' Page) 👈 THIS FIXES THE USER SITE
+        const singleKeys = await redis.keys("tour:*");
+        if (singleKeys.length > 0) {
+            await redis.del(singleKeys);
         }
     } catch (err) {
         console.error("Redis Cache Clear Error:", err);
