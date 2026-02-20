@@ -5,6 +5,7 @@ import { authenticate, requireAdmin } from "@common/middleware/auth.middleware";
 const router = Router();
 
 router.get("/", authenticate, requireAdmin, getSettings);
+router.get("/public", getSettings);
 router.patch("/", authenticate, requireAdmin, updateSettings);
 
 export default router;
