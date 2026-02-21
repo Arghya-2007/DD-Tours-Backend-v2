@@ -27,9 +27,9 @@ app.set('trust proxy', 1);
 // 🚨 CRITICAL FIX 2: Correct CORS Configuration
 // ==========================================
 const allowedOrigins = [
-    'https://dd-tours-admin-v2.vercel.app', // Your Vercel Admin
-    'https://dd-tours-user-v2.vercel.app',
-    'https://dd-admin-v2.onrender.com',     // If you have a separate Render frontend
+    'https://ddtours.in', // If you have a separate Render frontend
+    'https://www.ddtours.in',
+    'https://admin.ddtours.in',
     'http://localhost:5173',                // Local Development
     'http://localhost:3000'                 // Vite Preview
 ];
